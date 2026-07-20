@@ -60,7 +60,7 @@ export default function Home() {
           {[
             {
               label: "Paper type detection",
-              desc: "The system first figures out what kind of paper this is — method proposal, comparison study, dataset paper, or survey. The entire analysis changes based on this. A comparison paper gets each strategy explained individually. A method paper gets a full pipeline walkthrough."
+              desc: "The system first figures out what kind of paper this is: method proposal, comparison study, dataset paper, or survey. The entire analysis changes based on this. A comparison paper gets each strategy explained individually. A method paper gets a full pipeline walkthrough."
             },
             {
               label: "Structured sections",
