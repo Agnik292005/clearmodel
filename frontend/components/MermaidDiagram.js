@@ -9,6 +9,10 @@ function cleanMermaid(chart) {
     .replace(/<!--.*?-->/gs, "")
     .trim();
 
+  // Cut off trailing prose that sometimes gets appended after the diagram
+  // (e.g. "Note: ..." or explanatory sentences with no arrows)
+  cleaned = cleaned.replace(/([A-Za-z0-9\]\)])\s*(Note:|This diagram|The diagram)[\s\S]*$/, "$1");
+
   // Strip ALL pipe-based arrow labels completely -- just make them plain arrows
   cleaned = cleaned.replace(/-->\|[^|]*\|>/g, "-->");
   cleaned = cleaned.replace(/-->\|[^|]*\|/g, "-->");
@@ -27,7 +31,6 @@ function cleanMermaid(chart) {
   cleaned = cleaned.replace(/\s*\n\s*/g, "\n");
   return cleaned;
 }
-
 export default function MermaidDiagram({ chart }) {
   const ref = useRef(null);
 

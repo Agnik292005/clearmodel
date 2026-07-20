@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Navbar from "../components/Navbar";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -38,14 +39,7 @@ export default function Analyze() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <nav className="flex items-center justify-between px-12 py-4 border-b border-zinc-800">
-        <a href="/" className="text-xl font-semibold tracking-tight">ClearModel</a>
-        <div className="flex items-center gap-14 text-[15px] text-zinc-400">
-          <a href="/" className="hover:text-white transition">Home</a>
-          <a href="/analyze" className="text-white">Analyze</a>
-          <a href="/about" className="hover:text-white transition">About</a>
-        </div>
-      </nav>
+      <Navbar active="/analyze" />
 
       <main className="px-6 py-20 max-w-3xl mx-auto">
         <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">

@@ -1,14 +1,9 @@
+import Navbar from "../components/Navbar";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white">
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-800">
-        <h1 className="text-xl font-semibold tracking-tight">ClearModel</h1>
-        <div className="flex items-center gap-14 text-[15px] text-zinc-400">
-          <a href="/" className="hover:text-white transition">Home</a>
-          <a href="/analyze" className="hover:text-white transition">Analyze</a>
-          <a href="/about" className="hover:text-white transition">About</a>
-        </div>
-      </nav>
+      <Navbar active="/" />
 
       {/* Hero */}
       <main className="px-8 pt-20 pb-16 w-full">

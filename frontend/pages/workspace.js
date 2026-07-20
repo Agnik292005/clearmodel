@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import MermaidDiagram from "../components/MermaidDiagram";
+import Navbar from "../components/Navbar";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -62,17 +63,10 @@ export default function Workspace() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <nav className="flex items-center justify-between px-12 py-4 border-b border-zinc-800 sticky top-0 bg-black z-50">
-        <a href="/" className="text-xl font-semibold tracking-tight">ClearModel</a>
-        <div className="flex items-center gap-14 text-[15px] text-zinc-400">
-          <a href="/" className="hover:text-white transition">Home</a>
-          <a href="/analyze" className="hover:text-white transition">Analyze</a>
-          <a href="/about" className="hover:text-white transition">About</a>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <Navbar active={null} sticky />
 
-      <div className="border-b border-zinc-800 px-12 py-5">
+      <div className="border-b border-zinc-800 px-6 sm:px-12 py-5">
         <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Research Paper</p>
         <h1 className="text-xl font-semibold tracking-tight truncate">
           {paperName.replace(".pdf", "")}
@@ -84,8 +78,27 @@ export default function Workspace() {
         )}
       </div>
 
+      {/* Mobile section nav - horizontal scroll chips, shown below lg only */}
+      <div className="lg:hidden border-b border-zinc-800 py-3 overflow-x-auto no-scrollbar sticky top-[57px] bg-black z-40">
+        <div className="flex gap-2 px-6 w-max">
+          {sections.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => scrollTo(id)}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs transition ${
+                activeSection === id
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 border border-zinc-800 hover:text-white"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex max-w-7xl mx-auto">
-        <aside className="w-64 shrink-0 sticky top-[105px] h-[calc(100vh-105px)] border-r border-zinc-800 py-8 px-6">
+        <aside className="hidden lg:block w-64 shrink-0 sticky top-[105px] h-[calc(100vh-105px)] border-r border-zinc-800 py-8 px-6">
           <p className="text-xs text-zinc-500 uppercase tracking-widest mb-4">Sections</p>
           <nav className="space-y-1">
             {sections.map(({ id, label }) => (
@@ -109,7 +122,7 @@ export default function Workspace() {
           </div>
         </aside>
 
-        <main className="flex-1 px-12 py-10 space-y-20 min-w-0">
+        <main className="flex-1 min-w-0 px-6 sm:px-12 py-10 space-y-20">
 
           <Section id="keywords" title="Key Terms">
             <div className="grid grid-cols-1 gap-4">
@@ -200,7 +213,7 @@ export default function Workspace() {
           </Section>
 
           <Section id="diagram" title="Method Diagram">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 overflow-x-auto">
               {result.diagram
                 ? <MermaidDiagram chart={result.diagram} />
                 : <p className="text-zinc-500 text-sm">No diagram available.</p>
@@ -218,7 +231,7 @@ export default function Workspace() {
 
 function Section({ id, title, children }) {
   return (
-    <section id={id} className="scroll-mt-10">
+    <section id={id} className="scroll-mt-32">
       <div className="mb-5">
         <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
         <div className="mt-2 h-px w-12 bg-zinc-700" />
@@ -273,7 +286,7 @@ function ChatPanel({ sessionId }) {
 
   return (
     <div className="border-t border-zinc-800 bg-zinc-950">
-      <div className="max-w-7xl mx-auto px-12 py-8">
+      <div className="max-w-7xl mx-auto px-6 sm:px-12 py-8">
         <p className="text-xs text-zinc-500 uppercase tracking-widest mb-6">
           Ask about this paper
         </p>
