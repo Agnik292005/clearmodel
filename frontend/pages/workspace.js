@@ -9,7 +9,7 @@ const sections = [
   { id: "core-problem", label: "Core Problem" },
   { id: "key-idea", label: "Key Idea" },
   { id: "method", label: "Method" },
-  { id: "numerical-summary", label: "By The Numbers" },
+  { id: "numbers-note", label: "Numbers" },
   { id: "assumptions", label: "Assumptions" },
   { id: "limitations", label: "Limitations" },
   { id: "mental-model", label: "Mental Model" },
@@ -30,7 +30,9 @@ export default function Workspace() {
 
   function scrollTo(id) {
     setActiveSection(id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document
+      .getElementById(id)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function Workspace() {
           if (entry.isIntersecting) setActiveSection(entry.target.id);
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0.3 },
     );
     sections.forEach(({ id }) => {
       const el = document.getElementById(id);
@@ -54,7 +56,10 @@ export default function Workspace() {
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-zinc-400 text-lg">No analysis found.</p>
-          <a href="/analyze" className="mt-4 inline-block text-sm text-white underline underline-offset-4">
+          <a
+            href="/analyze"
+            className="mt-4 inline-block text-sm text-white underline underline-offset-4"
+          >
             Analyze a paper
           </a>
         </div>
@@ -67,7 +72,9 @@ export default function Workspace() {
       <Navbar active={null} sticky />
 
       <div className="border-b border-zinc-800 px-6 sm:px-12 py-5">
-        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Research Paper</p>
+        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
+          Research Paper
+        </p>
         <h1 className="text-xl font-semibold tracking-tight truncate">
           {paperName.replace(".pdf", "")}
         </h1>
@@ -98,8 +105,10 @@ export default function Workspace() {
       </div>
 
       <div className="flex max-w-7xl mx-auto">
-        <aside className="hidden lg:block w-64 shrink-0 sticky top-[105px] h-[calc(100vh-105px)] border-r border-zinc-800 py-8 px-6">
-          <p className="text-xs text-zinc-500 uppercase tracking-widest mb-4">Sections</p>
+        <aside className="hidden lg:block w-64 shrink-0 sticky top-[105px] h-[calc(100vh-105px)] border-r border-zinc-800 py-8 px-6 overflow-y-auto">
+          <p className="text-xs text-zinc-500 uppercase tracking-widest mb-4">
+            Sections
+          </p>
           <nav className="space-y-1">
             {sections.map(({ id, label }) => (
               <button
@@ -116,31 +125,41 @@ export default function Workspace() {
             ))}
           </nav>
           <div className="mt-8 pt-8 border-t border-zinc-800">
-            <a href="/analyze" className="w-full block text-center rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition text-sm py-2">
+            <a
+              href="/analyze"
+              className="w-full block text-center rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition text-sm py-2"
+            >
               New paper
             </a>
           </div>
         </aside>
 
         <main className="flex-1 min-w-0 px-6 sm:px-12 py-10 space-y-20">
-
           <Section id="keywords" title="Key Terms">
             <div className="grid grid-cols-1 gap-4">
-              {result.keywords && result.keywords.map((item, i) => (
-                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4">
-                  <p className="text-sm font-semibold text-white mb-1">
-                    {typeof item === "string" ? item : item.term}
-                  </p>
-                  {item.definition && (
-                    <p className="text-sm text-zinc-400 leading-relaxed">{item.definition}</p>
-                  )}
-                </div>
-              ))}
+              {result.keywords &&
+                result.keywords.map((item, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4"
+                  >
+                    <p className="text-sm font-semibold text-white mb-1">
+                      {typeof item === "string" ? item : item.term}
+                    </p>
+                    {item.definition && (
+                      <p className="text-sm text-zinc-400 leading-relaxed">
+                        {item.definition}
+                      </p>
+                    )}
+                  </div>
+                ))}
             </div>
           </Section>
 
           <Section id="core-problem" title="Core Problem">
-            <p className="text-zinc-300 leading-relaxed">{result.core_problem}</p>
+            <p className="text-zinc-300 leading-relaxed">
+              {result.core_problem}
+            </p>
           </Section>
 
           <Section id="key-idea" title="Key Idea">
@@ -151,76 +170,127 @@ export default function Workspace() {
             <p className="text-zinc-300 leading-relaxed">{result.method}</p>
           </Section>
 
-          <Section id="numerical-summary" title="By The Numbers">
-            <div className="grid grid-cols-1 gap-4">
-              {result.numerical_summary && Object.entries(result.numerical_summary).map(([key, value]) => (
-                <div key={key} className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4">
-                  <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">
-                    {key.replace(/_/g, " ")}
-                  </p>
-                  <p className="text-sm text-zinc-300 leading-relaxed">{value}</p>
-                </div>
-              ))}
+          <Section id="numbers-note" title="Looking for exact numbers?">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 flex items-start gap-4">
+              <div className="shrink-0 mt-0.5">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-zinc-500"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4M12 8h.01" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-zinc-300 leading-relaxed">
+                  Exact statistics, accuracy figures, and other precise numbers
+                  aren't included in the summary above, since AI-generated
+                  summaries can occasionally misstate specific figures.
+                </p>
+                <p className="text-zinc-400 text-sm leading-relaxed mt-2">
+                  For anything numeric, use the chat below and ask directly,
+                  for example "what was the accuracy of each model" or "how
+                  many samples were in the dataset". Answers there are
+                  grounded directly in the paper's actual text.
+                </p>
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("chat-panel")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                  className="mt-4 text-sm text-white underline underline-offset-4 hover:text-zinc-300 transition"
+                >
+                  Jump to chat →
+                </button>
+              </div>
             </div>
           </Section>
 
           <Section id="assumptions" title="Assumptions">
             <div className="space-y-4">
-              {result.assumptions && result.assumptions.map((item, i) => (
-                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4">
-                  <p className="text-sm font-semibold text-white mb-3">
-                    {typeof item === "string" ? item : item.assumption}
-                  </p>
-                  {item.why && (
-                    <>
-                      <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Why assumed</p>
-                      <p className="text-sm text-zinc-400 leading-relaxed mb-3">{item.why}</p>
-                    </>
-                  )}
-                  {item.consequence && (
-                    <>
-                      <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">If this breaks</p>
-                      <p className="text-sm text-zinc-400 leading-relaxed">{item.consequence}</p>
-                    </>
-                  )}
-                </div>
-              ))}
+              {result.assumptions &&
+                result.assumptions.map((item, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4"
+                  >
+                    <p className="text-sm font-semibold text-white mb-3">
+                      {typeof item === "string" ? item : item.assumption}
+                    </p>
+                    {item.why && (
+                      <>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
+                          Why assumed
+                        </p>
+                        <p className="text-sm text-zinc-400 leading-relaxed mb-3">
+                          {item.why}
+                        </p>
+                      </>
+                    )}
+                    {item.consequence && (
+                      <>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
+                          If this breaks
+                        </p>
+                        <p className="text-sm text-zinc-400 leading-relaxed">
+                          {item.consequence}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ))}
             </div>
           </Section>
 
           <Section id="limitations" title="Limitations">
             <div className="space-y-4">
-              {result.limitations && result.limitations.map((item, i) => (
-                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4">
-                  <p className="text-sm font-semibold text-white mb-3">
-                    {typeof item === "string" ? item : item.limitation}
-                  </p>
-                  {item.impact && (
-                    <>
-                      <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Practical impact</p>
-                      <p className="text-sm text-zinc-400 leading-relaxed">{item.impact}</p>
-                    </>
-                  )}
-                </div>
-              ))}
+              {result.limitations &&
+                result.limitations.map((item, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4"
+                  >
+                    <p className="text-sm font-semibold text-white mb-3">
+                      {typeof item === "string" ? item : item.limitation}
+                    </p>
+                    {item.impact && (
+                      <>
+                        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">
+                          Practical impact
+                        </p>
+                        <p className="text-sm text-zinc-400 leading-relaxed">
+                          {item.impact}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ))}
             </div>
           </Section>
 
           <Section id="mental-model" title="Mental Model">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6">
-              <p className="text-zinc-300 leading-relaxed">{result.mental_model}</p>
+              <p className="text-zinc-300 leading-relaxed">
+                {result.mental_model}
+              </p>
             </div>
           </Section>
 
           <Section id="diagram" title="Method Diagram">
             <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 overflow-x-auto">
-              {result.diagram
-                ? <MermaidDiagram chart={result.diagram} />
-                : <p className="text-zinc-500 text-sm">No diagram available.</p>
-              }
+              {result.diagram ? (
+                <MermaidDiagram chart={result.diagram} />
+              ) : (
+                <p className="text-zinc-500 text-sm">No diagram available.</p>
+              )}
             </div>
           </Section>
-
         </main>
       </div>
 
@@ -255,7 +325,7 @@ function ChatPanel({ sessionId }) {
     if (!input.trim() || loading) return;
     const question = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: question }]);
+    setMessages((prev) => [...prev, { role: "user", content: question }]);
     setLoading(true);
 
     try {
@@ -269,26 +339,40 @@ function ChatPanel({ sessionId }) {
         }),
       });
       const data = await response.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.answer },
+      ]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Something went wrong. Please try again.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   }
 
   const suggestions = [
-    "What are the main findings?",
+    "What are the exact numbers and results?",
     "Which method performed best and why?",
-    "What datasets were used?",
+    "What datasets were used, with sizes?",
     "What are the key limitations?",
   ];
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-950">
+    <div className="border-t border-zinc-800 bg-zinc-950" id="chat-panel">
       <div className="max-w-7xl mx-auto px-6 sm:px-12 py-8">
-        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-6">
+        <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">
           Ask about this paper
+        </p>
+        <p className="text-xs text-zinc-600 mb-6">
+          For specific numbers, statistics, or results, ask here rather than
+          relying on the summary above, answers here are grounded directly in
+          the paper's text.
         </p>
 
         <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
@@ -307,12 +391,17 @@ function ChatPanel({ sessionId }) {
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-2xl rounded-xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-zinc-800 text-white"
-                  : "bg-zinc-900 border border-zinc-800 text-zinc-300"
-              }`}>
+            <div
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-2xl rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
+                  msg.role === "user"
+                    ? "bg-zinc-800 text-white"
+                    : "bg-zinc-900 border border-zinc-800 text-zinc-300"
+                }`}
+              >
                 {msg.content}
               </div>
             </div>
