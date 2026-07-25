@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../utils/supabaseClient";
 
 export default function Navbar({ active, sticky = false }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -17,6 +19,16 @@ export default function Navbar({ active, sticky = false }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (accountRef.current && !accountRef.current.contains(e.target)) {
+        setAccountOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = "/";
@@ -27,6 +39,11 @@ export default function Navbar({ active, sticky = false }) {
     { href: "/analyze", label: "Analyze" },
     { href: "/about", label: "About" },
   ];
+
+  const meta = user?.user_metadata || {};
+  const displayName = meta.full_name || meta.name || null;
+  const avatarUrl = meta.avatar_url || meta.picture || null;
+  const initial = (displayName || user?.email || "?")[0].toUpperCase();
 
   return (
     <nav className={`border-b border-zinc-800 px-6 sm:px-12 py-4 ${sticky ? "sticky top-0 bg-black z-50" : ""}`}>
@@ -44,9 +61,62 @@ export default function Navbar({ active, sticky = false }) {
               <a href="/dashboard" className={active === "/dashboard" ? "text-white" : "hover:text-white transition"}>
                 Dashboard
               </a>
-              <button onClick={handleLogout} className="hover:text-white transition">
-                Log out
-              </button>
+
+              <div className="relative" ref={accountRef}>
+                <button
+                  onClick={() => setAccountOpen(!accountOpen)}
+                  className="flex items-center gap-2 hover:text-white transition"
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Account"
+                      className="w-7 h-7 rounded-full border border-zinc-700"
+                    />
+                  ) : (
+                    <span className="w-7 h-7 rounded-full bg-zinc-800 text-white flex items-center justify-center text-xs font-medium">
+                      {initial}
+                    </span>
+                  )}
+                </button>
+
+                {accountOpen && (
+                  <div className="absolute right-0 mt-3 w-64 rounded-xl border border-zinc-800 bg-zinc-950 shadow-xl p-4 text-sm z-50">
+                    <div className="flex items-center gap-3 pb-3 border-b border-zinc-800">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Account"
+                          className="w-10 h-10 rounded-full border border-zinc-700"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 rounded-full bg-zinc-800 text-white flex items-center justify-center text-sm font-medium">
+                          {initial}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium text-white truncate">
+                          {displayName || "Account"}
+                        </p>
+                        <p className="text-zinc-500 text-xs truncate">{user.email}</p>
+                      </div>
+                    </div>
+
+                    <a
+                      href="/dashboard"
+                      className="block mt-3 px-2 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-900 transition"
+                    >
+                      Dashboard
+                    </a>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left mt-1 px-2 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-900 transition"
+                    >
+                      Log out
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <a href="/login" className="hover:text-white transition">
@@ -83,6 +153,25 @@ export default function Navbar({ active, sticky = false }) {
           })}
           {user ? (
             <>
+              <div className="flex items-center gap-3 px-2 py-3">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Account"
+                    className="w-9 h-9 rounded-full border border-zinc-700"
+                  />
+                ) : (
+                  <span className="w-9 h-9 rounded-full bg-zinc-800 text-white flex items-center justify-center text-sm font-medium">
+                    {initial}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {displayName || "Account"}
+                  </p>
+                  <p className="text-xs text-zinc-500 truncate">{user.email}</p>
+                </div>
+              </div>
               <a href="/dashboard" className="px-2 py-3 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-900">
                 Dashboard
               </a>

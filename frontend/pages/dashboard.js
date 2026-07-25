@@ -232,12 +232,23 @@ export default function Dashboard() {
       <Navbar active="/dashboard" />
 
       <main className="px-6 py-16 max-w-5xl mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-          Dashboard
-        </h2>
-        <p className="mt-3 text-zinc-400">
-          Your saved papers and activity.
-        </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+              Dashboard
+            </h2>
+            <p className="mt-3 text-zinc-400">
+              Your saved papers and activity.
+            </p>
+          </div>
+
+          <a
+            href="/analyze"
+            className="shrink-0 rounded-xl bg-white text-black px-5 py-2.5 text-sm font-medium hover:bg-zinc-200 transition"
+          >
+            + Analyze new paper
+          </a>
+        </div>
 
         {error && (
           <div className="mt-8 rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-400">
