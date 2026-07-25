@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import MermaidDiagram from "../components/MermaidDiagram";
 import Navbar from "../components/Navbar";
+import { supabase } from "../utils/supabaseClient";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -85,7 +86,6 @@ export default function Workspace() {
         )}
       </div>
 
-      {/* Mobile section nav - horizontal scroll chips, shown below lg only */}
       <div className="lg:hidden border-b border-zinc-800 py-3 overflow-x-auto no-scrollbar sticky top-[57px] bg-black z-40">
         <div className="flex gap-2 px-6 w-max">
           {sections.map(({ id, label }) => (
@@ -329,9 +329,15 @@ function ChatPanel({ sessionId }) {
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const response = await fetch(`${API}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           question,
           session_id: sessionId,

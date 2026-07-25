@@ -2,19 +2,26 @@ import os
 import json
 import io
 import uuid
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import traceback
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 from groq import Groq
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import chromadb
 from sentence_transformers import SentenceTransformer
+from supabase import create_client
 
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_KEY")
+)
 
 print("Loading embedding model...")
 embedder = SentenceTransformer("all-MiniLM-L6-v2", backend="onnx")
@@ -31,6 +38,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def get_user_id_from_token(authorization: Optional[str]) -> Optional[str]:
+    """Returns the user's ID if a valid Supabase session token is provided, else None (guest)."""
+    if not authorization:
+        return None
+    token = authorization.replace("Bearer ", "").strip()
+    if not token:
+        return None
+    try:
+        user_response = supabase.auth.get_user(token)
+        return user_response.user.id
+    except Exception:
+        return None
 
 
 def extract_text(pdf_bytes: bytes) -> str:
@@ -53,7 +74,8 @@ def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> List[str]
     return chunks
 
 
-def build_rag_collection(text: str, session_id: str) -> str:
+def build_local_rag_collection(text: str, session_id: str) -> str:
+    """Guest mode: in-memory ChromaDB, unchanged from before."""
     collection_name = f"paper_{session_id}"
     try:
         chroma_client.delete_collection(collection_name)
@@ -70,7 +92,8 @@ def build_rag_collection(text: str, session_id: str) -> str:
     return collection_name
 
 
-def retrieve_relevant_chunks(question: str, collection_name: str, n_results: int = 5) -> str:
+def retrieve_local_chunks(question: str, collection_name: str, n_results: int = 5) -> str:
+    """Guest mode retrieval, unchanged from before."""
     collection = chroma_client.get_collection(collection_name)
     question_embedding = embedder.encode([question]).tolist()
     results = collection.query(
@@ -81,13 +104,71 @@ def retrieve_relevant_chunks(question: str, collection_name: str, n_results: int
     return "\n\n---\n\n".join(chunks)
 
 
+def save_paper_to_supabase(user_id: str, filename: str, text: str, analysis: dict) -> str:
+    """Logged-in mode: persist paper, analysis, and chunks to Supabase. Returns paper_id."""
+    paper_row = supabase.table("papers").insert({
+        "user_id": user_id,
+        "filename": filename,
+        "extracted_text": text,
+    }).execute()
+    paper_id = paper_row.data[0]["id"]
+
+    supabase.table("analyses").insert({
+        "paper_id": paper_id,
+        "paper_type": analysis.get("paper_type"),
+        "core_problem": analysis.get("core_problem"),
+        "key_idea": analysis.get("key_idea"),
+        "method": analysis.get("method"),
+        "assumptions": analysis.get("assumptions"),
+        "limitations": analysis.get("limitations"),
+        "mental_model": analysis.get("mental_model"),
+        "keywords": analysis.get("keywords"),
+        "diagram": analysis.get("diagram"),
+    }).execute()
+
+    chunks = chunk_text(text)
+    embeddings = embedder.encode(chunks).tolist()
+    embeddings = [[float(x) for x in emb] for emb in embeddings]
+    chunk_rows = [
+        {"paper_id": paper_id, "chunk_text": chunks[i], "embedding": embeddings[i]}
+        for i in range(len(chunks))
+    ]
+    # Insert in batches to avoid oversized requests
+    batch_size = 50
+    for i in range(0, len(chunk_rows), batch_size):
+        supabase.table("paper_chunks").insert(chunk_rows[i:i + batch_size]).execute()
+
+    return paper_id
+
+
+def retrieve_supabase_chunks(question: str, paper_id: str, n_results: int = 5) -> str:
+    """Logged-in mode retrieval via pgvector similarity search."""
+    question_embedding = embedder.encode([question]).tolist()[0]
+    question_embedding = [float(x) for x in question_embedding]
+    result = supabase.rpc("match_paper_chunks", {
+        "query_embedding": question_embedding,
+        "match_paper_id": paper_id,
+        "match_count": n_results
+    }).execute()
+    chunks = [row["chunk_text"] for row in result.data]
+    return "\n\n---\n\n".join(chunks)
+
+
+def save_chat_message(paper_id: str, role: str, content: str):
+    supabase.table("chat_messages").insert({
+        "paper_id": paper_id,
+        "role": role,
+        "content": content,
+    }).execute()
+
+
 @app.get("/")
 def root():
     return {"status": "ClearModel backend running"}
 
 
 @app.post("/analyze-paper")
-async def analyze_paper(file: UploadFile = File(...)):
+async def analyze_paper(file: UploadFile = File(...), authorization: Optional[str] = Header(None)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
@@ -103,9 +184,6 @@ async def analyze_paper(file: UploadFile = File(...)):
 
     if len(text.strip()) < 200:
         raise HTTPException(status_code=422, detail="PDF appears to be a scanned image. Please upload a text-based PDF.")
-
-    session_id = str(uuid.uuid4())[:8]
-    collection_name = build_rag_collection(text, session_id)
 
     analysis_text = text[:20000]
 
@@ -203,7 +281,25 @@ Research paper text:
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="AI returned malformed response. Please try again.")
 
-    result["session_id"] = collection_name
+    user_id = get_user_id_from_token(authorization)
+
+    if user_id:
+        try:
+            paper_id = save_paper_to_supabase(user_id, file.filename, text, result)
+            result["session_id"] = f"db_{paper_id}"
+        except Exception as e:
+            print(f"SUPABASE SAVE ERROR: {repr(e)}")
+            traceback.print_exc()
+            # Fall back to guest-mode behavior instead of crashing the request
+            local_id = str(uuid.uuid4())[:8]
+            collection_name = build_local_rag_collection(text, local_id)
+            result["session_id"] = f"local_{collection_name}"
+    else:
+        # Guest: existing in-memory Chroma behavior, unchanged
+        local_id = str(uuid.uuid4())[:8]
+        collection_name = build_local_rag_collection(text, local_id)
+        result["session_id"] = f"local_{collection_name}"
+
     return result
 
 
@@ -219,7 +315,7 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-async def chat_with_paper(req: ChatRequest):
+async def chat_with_paper(req: ChatRequest, authorization: Optional[str] = Header(None)):
     try:
         expansion_response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -235,8 +331,15 @@ Question: {req.question}"""
     except Exception:
         expanded_query = req.question
 
+    is_db_session = req.session_id.startswith("db_")
+
     try:
-        relevant_context = retrieve_relevant_chunks(expanded_query, req.session_id)
+        if is_db_session:
+            paper_id = req.session_id.replace("db_", "")
+            relevant_context = retrieve_supabase_chunks(expanded_query, paper_id)
+        else:
+            local_collection = req.session_id.replace("local_", "")
+            relevant_context = retrieve_local_chunks(expanded_query, local_collection)
     except Exception:
         raise HTTPException(status_code=404, detail="Paper session not found. Please re-upload the paper.")
 
@@ -280,4 +383,11 @@ rather than combining them into a single flowing sentence. Use plain line breaks
             raise HTTPException(status_code=429, detail="Rate limit reached. Please wait a moment.")
         raise HTTPException(status_code=503, detail="AI service unavailable.")
 
-    return {"answer": response.choices[0].message.content}
+    answer = response.choices[0].message.content
+
+    if is_db_session:
+        paper_id = req.session_id.replace("db_", "")
+        save_chat_message(paper_id, "user", req.question)
+        save_chat_message(paper_id, "assistant", answer)
+
+    return {"answer": answer}

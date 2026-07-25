@@ -1,7 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../utils/supabaseClient";
 
 export default function Navbar({ active, sticky = false }) {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
 
   const links = [
     { href: "/", label: "Home" },
@@ -15,14 +34,25 @@ export default function Navbar({ active, sticky = false }) {
         <a href="/" className="text-xl font-semibold tracking-tight shrink-0">ClearModel</a>
 
         <div className="hidden sm:flex items-center gap-14 text-[15px] text-zinc-400">
-          {links.map(({ href, label }) => {
-            const isActive = active === href;
-            return (
-              <a key={href} href={href} className={isActive ? "text-white" : "hover:text-white transition"}>
-                {label}
+          {links.map(({ href, label }) => (
+            <a key={href} href={href} className={active === href ? "text-white" : "hover:text-white transition"}>
+              {label}
+            </a>
+          ))}
+          {user ? (
+            <>
+              <a href="/dashboard" className={active === "/dashboard" ? "text-white" : "hover:text-white transition"}>
+                Dashboard
               </a>
-            );
-          })}
+              <button onClick={handleLogout} className="hover:text-white transition">
+                Log out
+              </button>
+            </>
+          ) : (
+            <a href="/login" className="hover:text-white transition">
+              Log in
+            </a>
+          )}
         </div>
 
         <button
@@ -51,6 +81,20 @@ export default function Navbar({ active, sticky = false }) {
               </a>
             );
           })}
+          {user ? (
+            <>
+              <a href="/dashboard" className="px-2 py-3 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-900">
+                Dashboard
+              </a>
+              <button onClick={handleLogout} className="px-2 py-3 rounded-lg text-sm text-left text-zinc-400 hover:text-white hover:bg-zinc-900">
+                Log out
+              </button>
+            </>
+          ) : (
+            <a href="/login" className="px-2 py-3 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-900">
+              Log in
+            </a>
+          )}
         </div>
       )}
     </nav>
