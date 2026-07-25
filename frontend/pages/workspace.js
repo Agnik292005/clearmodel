@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/router";
 import MermaidDiagram from "../components/MermaidDiagram";
 import Navbar from "../components/Navbar";
 import { supabase } from "../utils/supabaseClient";
@@ -18,16 +19,88 @@ const sections = [
 ];
 
 export default function Workspace() {
+  const router = useRouter();
   const [result, setResult] = useState(null);
   const [paperName, setPaperName] = useState("");
   const [activeSection, setActiveSection] = useState("keywords");
+  const [initialMessages, setInitialMessages] = useState([]);
+  const [loadingPaper, setLoadingPaper] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("analysisResult");
-    const name = sessionStorage.getItem("paperName");
-    if (stored) setResult(JSON.parse(stored));
-    if (name) setPaperName(name);
-  }, []);
+    if (!router.isReady) return;
+
+    const { paper_id } = router.query;
+
+    if (paper_id) {
+      loadFromSupabase(paper_id);
+    } else {
+      // Fresh-analyze flow: read from sessionStorage as before
+      const stored = sessionStorage.getItem("analysisResult");
+      const name = sessionStorage.getItem("paperName");
+      if (stored) setResult(JSON.parse(stored));
+      if (name) setPaperName(name);
+    }
+  }, [router.isReady, router.query]);
+
+  async function loadFromSupabase(paperId) {
+    setLoadingPaper(true);
+    setLoadError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      // Fetch the paper (for filename) and its analysis together
+      const { data: paperRow, error: paperError } = await supabase
+        .from("papers")
+        .select("id, filename, analyses(*)")
+        .eq("id", paperId)
+        .single();
+
+      if (paperError) throw paperError;
+      if (!paperRow || !paperRow.analyses || paperRow.analyses.length === 0) {
+        throw new Error("No analysis found for this paper.");
+      }
+
+      const analysis = paperRow.analyses[0];
+
+      setResult({
+        paper_type: analysis.paper_type,
+        core_problem: analysis.core_problem,
+        key_idea: analysis.key_idea,
+        method: analysis.method,
+        assumptions: analysis.assumptions,
+        limitations: analysis.limitations,
+        mental_model: analysis.mental_model,
+        keywords: analysis.keywords,
+        diagram: analysis.diagram,
+        session_id: `db_${paperRow.id}`,
+      });
+      setPaperName(paperRow.filename || "");
+
+      // Load prior chat history for this paper
+      const { data: chatRows, error: chatError } = await supabase
+        .from("chat_messages")
+        .select("role, content, created_at")
+        .eq("paper_id", paperId)
+        .order("created_at", { ascending: true });
+
+      if (chatError) throw chatError;
+
+      setInitialMessages(
+        (chatRows || []).map((m) => ({ role: m.role, content: m.content }))
+      );
+    } catch (err) {
+      console.error("Load paper error:", err);
+      setLoadError(err.message || "Failed to load this paper.");
+    } finally {
+      setLoadingPaper(false);
+    }
+  }
 
   function scrollTo(id) {
     setActiveSection(id);
@@ -51,6 +124,30 @@ export default function Workspace() {
     });
     return () => observer.disconnect();
   }, [result]);
+
+  if (loadingPaper) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p className="text-zinc-400 text-lg">Loading paper…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <p className="text-red-400 text-lg">{loadError}</p>
+          <a
+            href="/dashboard"
+            className="mt-4 inline-block text-sm text-white underline underline-offset-4"
+          >
+            Back to dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (!result) {
     return (
@@ -294,7 +391,7 @@ export default function Workspace() {
         </main>
       </div>
 
-      <ChatPanel sessionId={result.session_id} />
+      <ChatPanel sessionId={result.session_id} initialMessages={initialMessages} />
     </div>
   );
 }
@@ -311,11 +408,15 @@ function Section({ id, title, children }) {
   );
 }
 
-function ChatPanel({ sessionId }) {
-  const [messages, setMessages] = useState([]);
+function ChatPanel({ sessionId, initialMessages = [] }) {
+  const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [initialMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
