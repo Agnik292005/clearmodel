@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-
 function cleanMermaid(chart) {
   let cleaned = chart
     .replace(/–/g, "-")
@@ -8,15 +7,12 @@ function cleanMermaid(chart) {
     .replace(/['']/g, "'")
     .replace(/<!--.*?-->/gs, "")
     .trim();
-
   // Cut off trailing prose that sometimes gets appended after the diagram
   // (e.g. "Note: ..." or explanatory sentences with no arrows)
   cleaned = cleaned.replace(/([A-Za-z0-9\]\)])\s*(Note:|This diagram|The diagram)[\s\S]*$/, "$1");
-
   // Strip ALL pipe-based arrow labels completely -- just make them plain arrows
   cleaned = cleaned.replace(/-->\|[^|]*\|>/g, "-->");
   cleaned = cleaned.replace(/-->\|[^|]*\|/g, "-->");
-
   // Clean everything inside square brackets [ ]
   cleaned = cleaned.replace(/\[([^\]]+)\]/g, (_, inner) => {
     const safe = inner
@@ -27,16 +23,21 @@ function cleanMermaid(chart) {
       .trim();
     return `[${safe}]`;
   });
-
   cleaned = cleaned.replace(/\s*\n\s*/g, "\n");
+  // Strip any style/classDef/class override lines the model may have added,
+  // e.g. "style A fill:#f9f,stroke:#333,stroke-width:2px" (a common Mermaid
+  // tutorial snippet the model sometimes echoes). These hardcode node colors
+  // and silently override our themeVariables on a per-node basis.
+  cleaned = cleaned
+    .split("\n")
+    .filter((line) => !/^\s*(style|classDef|class)\s+/i.test(line))
+    .join("\n");
   return cleaned;
 }
 export default function MermaidDiagram({ chart }) {
   const ref = useRef(null);
-
   useEffect(() => {
     if (!chart || !ref.current) return;
-
     import("mermaid").then((m) => {
       const mermaid = m.default;
       mermaid.initialize({
@@ -53,11 +54,9 @@ export default function MermaidDiagram({ chart }) {
           tertiaryColor: "#18181b",
         },
       });
-
       const cleaned = cleanMermaid(chart);
       const id = "mermaid-" + Math.random().toString(36).substr(2, 9);
       ref.current.innerHTML = "";
-
       mermaid.render(id, cleaned)
         .then(({ svg }) => {
           if (ref.current) ref.current.innerHTML = svg;
@@ -75,6 +74,5 @@ export default function MermaidDiagram({ chart }) {
         });
     });
   }, [chart]);
-
   return <div ref={ref} className="w-full overflow-x-auto" />;
 }
